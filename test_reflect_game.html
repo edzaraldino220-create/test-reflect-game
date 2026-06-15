@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Reflect Game - Latih Refleks & Presisi Waktu Anda</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                        mono: ['Share Tech Mono', 'monospace'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        .glow-green {
+            box-shadow: 0 0 25px rgba(34, 197, 94, 0.4);
+        }
+        .glow-red {
+            box-shadow: 0 0 25px rgba(239, 68, 68, 0.4);
+        }
+        .glow-primary {
+            box-shadow: 0 0 25px rgba(99, 102, 241, 0.5);
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1f2937;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col justify-between selection:bg-indigo-500 selection:text-white relative overflow-x-hidden">
+
+    <!-- CANVAS UNTUK EFEK KONFETI -->
+    <canvas id="confetti-canvas" class="fixed inset-0 pointer-events-none z-40 w-full h-full"></canvas>
+
+    <!-- TOP AD BANNER SIMULATION (Simulasi Iklan Atas) -->
+    <div class="w-full bg-slate-900 border-b border-slate-800 py-2 px-4 relative z-30">
+        <div class="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+            <span class="text-xs font-semibold uppercase tracking-widest text-indigo-400 bg-indigo-950/50 px-2 py-0.5 rounded border border-indigo-900/40">Sponsor</span>
+            <div class="flex items-center gap-3 text-center sm:text-left">
+                <p class="text-xs sm:text-sm text-slate-300 font-medium">
+                    ⚡ <span class="text-amber-400 font-bold">ReflectEnergy Drink:</span> Reaksi lambat? Pulihkan fokus instan Anda dalam 5 menit!
+                </p>
+                <a href="#" onclick="showMockAdPopup('ReflectEnergy Drink')" class="text-xs bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-1 rounded transition-all duration-200 shadow-sm">Beli Sekarang</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN CONTAINER -->
+    <main class="max-w-6xl w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start my-auto relative z-10">
+        
+        <!-- GAME CONSOLE SECTION (Kiri - 7 kolom pada layar besar) -->
+        <section class="lg:col-span-7 flex flex-col gap-6">
+            
+            <!-- HEADER GAME -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-center sm:text-left">
+                <div>
+                    <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+                        Test Reflect Game
+                    </h1>
+                    <p class="text-slate-400 mt-2 text-sm sm:text-base">
+                        Uji presisi otak dan kecepatan refleks Anda. Berhentikan stopwatch sedekat mungkin dengan target!
+                    </p>
+                </div>
+                <!-- MUTE CONTROL BUTTON -->
+                <button id="mute-btn" onclick="toggleMute()" class="self-center sm:self-auto bg-slate-900 hover:bg-slate-850 border border-slate-800 p-3 rounded-full text-lg transition-all active:scale-95" title="Aktifkan/Matikan Suara">
+                    🔊
+                </button>
+            </div>
+
+            <!-- MAIN GAMEBOARD CARD -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 relative overflow-hidden backdrop-blur-xl shadow-2xl">
+                <!-- Background decorative glow -->
+                <div class="absolute -top-12 -right-12 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl"></div>
+                <div class="absolute -bottom-12 -left-12 w-40 h-40 bg-purple-500/10 rounded-full blur-3xl"></div>
+
+                <!-- Game Stats & Settings Bar -->
+                <div class="flex flex-wrap items-center justify-between gap-4 mb-8 pb-4 border-b border-slate-800 relative z-10">
+                    <!-- User Profile Quick Info -->
+                    <div class="flex items-center gap-2">
+                        <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                        <span id="player-display-name" class="font-bold text-slate-200">Menghubungkan...</span>
+                        <button onclick="changeUsernamePrompt()" class="text-xs text-indigo-400 hover:text-indigo-300 underline ml-2">Ganti Nama</button>
+                    </div>
+
+                    <!-- Blind Mode Switcher -->
+                    <div class="flex items-center gap-3 bg-slate-950 p-1.5 rounded-xl border border-slate-800">
+                        <span class="text-xs font-semibold text-slate-400 pl-2">Mode Buta (2x Skor)</span>
+                        <button id="blind-mode-btn" onclick="toggleBlindMode()" class="relative inline-flex h-6 w-11 items-center rounded-full bg-slate-800 transition-colors duration-200 focus:outline-none">
+                            <span class="sr-only">Aktifkan Mode Buta</span>
+                            <span id="blind-mode-dot" class="inline-block h-4 w-4 transform rounded-full bg-slate-400 transition-transform duration-200 translate-x-1"></span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Target & Current Display -->
+                <div class="flex flex-col items-center justify-center py-6 relative z-10">
+                    <!-- Target Display -->
+                    <div class="text-center mb-4">
+                        <span class="text-xs uppercase font-semibold tracking-widest text-indigo-400">Target Waktu</span>
+                        <div class="flex items-baseline justify-center gap-1">
+                            <span id="target-time-display" class="text-5xl sm:text-6xl font-black font-mono text-white tracking-tight animate-pulse">0.000</span>
+                            <span class="text-lg font-bold text-indigo-400">detik</span>
+                        </div>
+                    </div>
+
+                    <!-- Main Counter Display -->
+                    <div class="my-8 relative w-full flex justify-center">
+                        <div id="counter-box" class="bg-slate-950 border border-slate-800 rounded-2xl px-10 py-8 min-w-[280px] sm:min-w-[340px] text-center transition-all duration-300">
+                            <span id="counter-time" class="text-6xl sm:text-7xl font-black font-mono text-slate-300 tracking-wider">0.000</span>
+                            <div id="blind-warning" class="text-xs text-amber-400 mt-2 font-semibold hidden animate-pulse">⚠️ Angka Tersembunyi! Andalkan Insting Anda!</div>
+                        </div>
+                    </div>
+
+                    <!-- Action Trigger Button -->
+                    <button id="action-btn" onclick="handleGameAction()" class="w-full sm:w-2/3 py-5 px-8 rounded-2xl font-extrabold text-xl tracking-wide uppercase transition-all duration-300 active:scale-95 transform glow-primary bg-indigo-600 hover:bg-indigo-500 text-white">
+                        Mulai Game
+                    </button>
+                </div>
+
+                <!-- Last Attempt Status / Score Notification -->
+                <div id="result-panel" class="mt-8 p-4 bg-slate-950/50 border border-slate-800 rounded-2xl hidden transition-all duration-300 relative z-10">
+                    <h3 class="font-bold text-center text-sm uppercase tracking-wider text-slate-400 mb-2">Hasil Refleks Terakhir</h3>
+                    <div class="grid grid-cols-3 gap-2 text-center">
+                        <div class="p-2 bg-slate-900 rounded-xl">
+                            <p class="text-xs text-slate-400">Deviasi</p>
+                            <p id="res-deviation" class="text-lg font-extrabold font-mono text-emerald-400">0.000s</p>
+                        </div>
+                        <div class="p-2 bg-slate-900 rounded-xl">
+                            <p class="text-xs text-slate-400">Waktu Stop</p>
+                            <p id="res-actual" class="text-lg font-bold font-mono">0.000s</p>
+                        </div>
+                        <div class="p-2 bg-slate-900 rounded-xl">
+                            <p class="text-xs text-slate-400">Skor Akurasi</p>
+                            <p id="res-accuracy" class="text-lg font-bold text-indigo-400">0%</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 flex flex-col sm:flex-row gap-2 justify-center">
+                        <button id="submit-score-btn" onclick="submitScoreToLeaderboard()" class="flex-1 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-extrabold py-2.5 px-4 rounded-xl text-sm transition-all duration-200">
+                            Kirim ke Leaderboard Global 🌐
+                        </button>
+                        <button onclick="triggerRewardedAd()" class="bg-indigo-950/40 border border-indigo-800 hover:bg-indigo-900/60 text-indigo-300 font-bold py-2.5 px-4 rounded-xl text-sm transition-all duration-200 flex items-center justify-center gap-1.5">
+                            🎬 Tonton Iklan (-0.05s Deviasi!)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PERSONAL STATS DASHBOARD (Statistik Lokal) -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 relative overflow-hidden backdrop-blur-xl shadow-xl">
+                <h3 class="text-lg font-extrabold text-slate-200 mb-4 flex items-center gap-2">
+                    📊 Statistik Pribadi Anda
+                </h3>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+                    <div class="bg-slate-950 p-3 rounded-2xl border border-slate-800/60">
+                        <p class="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Terbaik (Normal)</p>
+                        <p id="stat-pb-normal" class="text-lg font-extrabold font-mono text-emerald-400">---</p>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-2xl border border-slate-800/60">
+                        <p class="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Terbaik (Buta)</p>
+                        <p id="stat-pb-blind" class="text-lg font-extrabold font-mono text-amber-400">---</p>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-2xl border border-slate-800/60">
+                        <p class="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Rerata Deviasi</p>
+                        <p id="stat-avg-deviation" class="text-lg font-extrabold font-mono text-indigo-400">---</p>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-2xl border border-slate-800/60">
+                        <p class="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Total Bermain</p>
+                        <p id="stat-total-games" class="text-lg font-extrabold font-mono text-slate-300">0</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- LEADERBOARD & STATS SECTION (Kanan - 5 kolom pada layar besar) -->
+        <section class="lg:col-span-5 flex flex-col gap-6 h-full">
+            
+            <!-- LEADERBOARD CARD -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 flex flex-col h-[520px] backdrop-blur-xl shadow-2xl relative">
+                <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-800">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xl">🏆</span>
+                        <h2 class="text-xl font-extrabold text-slate-100">Leaderboard Global</h2>
+                    </div>
+                    <span class="text-xs bg-indigo-950 text-indigo-400 font-bold border border-indigo-900 px-2 py-1 rounded-full animate-pulse">Real-time</span>
+                </div>
+
+                <!-- Leaderboard Filter -->
+                <p class="text-xs text-slate-400 mb-3">Diurutkan berdasarkan deviasi terkecil (akurasi mendekati sempurna):</p>
+
+                <!-- Leaderboard Scroll Container -->
+                <div id="leaderboard-container" class="flex-1 overflow-y-auto pr-1 space-y-2">
+                    <!-- Loading state -->
+                    <div id="leaderboard-loading" class="flex flex-col items-center justify-center h-full gap-3 text-slate-400">
+                        <svg class="animate-spin h-8 w-8 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <p class="text-xs">Mengambil data peringkat global...</p>
+                    </div>
+
+                    <!-- No Data state -->
+                    <div id="leaderboard-empty" class="hidden text-center py-12 text-slate-400">
+                        <p class="text-sm">Belum ada skor yang dikirim.</p>
+                        <p class="text-xs text-slate-500 mt-1">Jadilah yang pertama mengirimkan rekor!</p>
+                    </div>
+
+                    <!-- Board List (Generated dynamically) -->
+                    <div id="leaderboard-list" class="space-y-2 hidden"></div>
+                </div>
+            </div>
+
+            <!-- SIDEBAR AD SIMULATION (Simulasi Iklan Samping) -->
+            <div class="bg-gradient-to-br from-indigo-950/40 to-slate-900 border border-slate-800 rounded-3xl p-5 relative overflow-hidden">
+                <span class="absolute top-3 right-3 text-[10px] font-semibold text-slate-500 tracking-wider uppercase">Promosi</span>
+                <div class="flex items-start gap-4">
+                    <div class="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl text-2xl">
+                        🎮
+                    </div>
+                    <div>
+                        <h4 class="font-extrabold text-sm text-slate-200">Reflect Premium Plus</h4>
+                        <p class="text-xs text-slate-400 mt-1">Ingin menghilangkan iklan dan membuka mode kompetitif kustom? Cukup tingkatkan akun Anda sekarang.</p>
+                        <button onclick="showMockAdPopup('Reflect Premium')" class="mt-3 text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-1.5 px-3 rounded-lg transition-all">Pelajari Selengkapnya</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="w-full bg-slate-950 border-t border-slate-900 py-6 px-4 text-center">
+        <div class="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+            <p>&copy; 2026 Test Reflect Game. Semua Hak Dilindungi Undang-Undang.</p>
+            <div class="flex gap-4">
+                <a href="#" class="hover:text-slate-400">Kebijakan Privasi</a>
+                <span>&bull;</span>
+                <a href="#" class="hover:text-slate-400">Ketentuan Layanan</a>
+                <span>&bull;</span>
+                <a href="#" class="hover:text-slate-400">Hubungi Kami</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- MOCK AD MODAL POPUP (Simulasi Klik Iklan) -->
+    <div id="ad-popup" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center z-50 p-4 transition-all duration-300">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 text-center shadow-2xl relative">
+            <button onclick="closeAdPopup()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-200 text-xl font-bold">&times;</button>
+            <div class="w-16 h-16 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-full flex items-center justify-center text-3xl mx-auto mb-4 animate-bounce">
+                🎉
+            </div>
+            <h3 class="text-xl font-extrabold text-white mb-2">Terima Kasih Atas Dukunganmu!</h3>
+            <p class="text-slate-300 text-sm mb-4">
+                Anda mengklik iklan sponsor <span id="ad-sponsor-name" class="font-bold text-amber-400"></span>. Interaksi ini membantu kami terus menyajikan game refleks berkualitas tinggi secara gratis!
+            </p>
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs text-slate-400 mb-6">
+                💡 <span class="font-semibold text-slate-300">Statistik Iklan Simulasi:</span> Tayangan & klik ini secara nyata meningkatkan 'ad feed engagement rate' pemilik platform!
+            </div>
+            <button onclick="closeAdPopup()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition-all">
+                Kembali ke Game
+            </button>
+        </div>
+    </div>
+
+    <!-- REWARDED AD MODAL PLAYING (Proses Menonton Iklan Reward) -->
+    <div id="rewarded-ad-popup" class="fixed inset-0 bg-slate-950/95 backdrop-blur-md hidden items-center justify-center z-50 p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-8 text-center shadow-2xl">
+            <span class="text-[10px] font-bold text-indigo-400 bg-indigo-950 px-2 py-0.5 rounded border border-indigo-900 uppercase">Sponsor Vid-Ad</span>
+            <h3 class="text-2xl font-black text-white mt-4 mb-2">Jangan Lewatkan Penawaran Ini!</h3>
+            <p class="text-sm text-slate-400 mb-6">Membantu mengurangi deviasi waktu Anda sebanyak <span class="text-emerald-400 font-bold">0.050 detik</span> agar peringkat Anda meroket!</p>
+            
+            <!-- Simulasi Pemutar Video Iklan -->
+            <div class="w-full h-44 bg-slate-950 rounded-2xl flex flex-col items-center justify-center border border-slate-800 relative overflow-hidden mb-6">
+                <div class="absolute inset-0 bg-gradient-to-r from-purple-900/20 to-indigo-900/20 animate-pulse"></div>
+                <div class="relative z-10 flex flex-col items-center gap-2">
+                    <span class="text-4xl animate-spin">⏳</span>
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-widest mt-2">Menonton Video...</span>
+                    <span id="ad-timer" class="text-2xl font-black font-mono text-indigo-400">5</span>
+                </div>
+            </div>
+            <p class="text-xs text-slate-500">Iklan akan selesai dan otomatis ditutup setelah waktu habis.</p>
+        </div>
+    </div>
+
+    <!-- SET USERNAME MODAL (Popup Pertama Kali / Mengganti Nama) -->
+    <div id="username-popup" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md hidden items-center justify-center z-50 p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-sm w-full p-6 shadow-2xl">
+            <h3 class="text-xl font-extrabold text-white mb-2">Siapa Nama Anda?</h3>
+            <p class="text-xs text-slate-400 mb-4">Nama ini akan tercantum di papan peringkat global real-time.</p>
+            <input type="text" id="username-input" maxlength="20" placeholder="Contoh: RajaRefleks" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm font-semibold focus:outline-none focus:border-indigo-500 mb-4">
+            <button onclick="saveUsername()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold py-3 rounded-xl transition-all">
+                Simpan & Mulai Main 🚀
+            </button>
+        </div>
+    </div>
+
+    <!-- CUSTOM TOAST NOTIFICATION -->
+    <div id="toast-notif" class="fixed bottom-6 right-6 bg-slate-900 border border-slate-800 px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none z-50">
+        <span id="toast-icon" class="text-lg">✨</span>
+        <p id="toast-message" class="text-xs font-bold text-slate-200"></p>
+    </div>
+
+    <!-- FIREBASE AND APP SCRIPT -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global Variables disediakan oleh sistem
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'test-reflect-game';
+
+        // State Aplikasi
+        let currentUser = null;
+        let username = "Anonim";
+        let targetTime = 5.000;
+        let startTime = 0;
+        let updatedTime = 0;
+        let tInterval = null;
+        let gameState = "IDLE"; // IDLE, RUNNING, STOPPED
+        let isBlindMode = false;
+        let lastResult = null;
+        let isMuted = false;
+
+        // Inisialisasi Audio Context secara lazy untuk performa ramah browser
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        // FUNGSI SYNTHESIS EFEK SUARA (Web Audio API)
+        function playSound(freq, type, duration, vol) {
+            if (isMuted) return;
+            try {
+                initAudio();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                
+                gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch (e) {
+                console.warn("Audio Context belum diaktifkan interaksi user.", e);
+            }
+        }
+
+        function playClickSound() {
+            playSound(400, 'sine', 0.1, 0.3);
+        }
+
+        function playTickSound() {
+            playSound(800, 'triangle', 0.05, 0.15);
+        }
+
+        function playSuccessSound() {
+            // Arpeggio nada gembira
+            setTimeout(() => playSound(523.25, 'sine', 0.3, 0.4), 0);   // C5
+            setTimeout(() => playSound(659.25, 'sine', 0.3, 0.4), 100); // E5
+            setTimeout(() => playSound(783.99, 'sine', 0.3, 0.4), 200); // G5
+            setTimeout(() => playSound(1046.5, 'sine', 0.5, 0.5), 300); // C6
+        }
+
+        function playFailureSound() {
+            // Nada menurun sedih
+            setTimeout(() => playSound(293.66, 'sawtooth', 0.4, 0.2), 0);   // D4
+            setTimeout(() => playSound(220.00, 'sawtooth', 0.6, 0.2), 150); // A3
+        }
+
+        // TONGGLE MUTE
+        window.toggleMute = function() {
+            isMuted = !isMuted;
+            const muteBtn = document.getElementById('mute-btn');
+            if (isMuted) {
+                muteBtn.textContent = "🔇";
+                showToast("Suara dimatikan", "🔇");
+            } else {
+                muteBtn.textContent = "🔊";
+                // Test suara sebentar
+                initAudio();
+                playClickSound();
+                showToast("Suara diaktifkan", "🔊");
+            }
+        };
+
+        // EFEK KONFETI (Canvas Efek visual premium)
+        const canvas = document.getElementById('confetti-canvas');
+        const ctx = canvas.getContext('2d');
+        let confetti = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function createConfetti() {
+            const colors = ['#6366f1', '#a855f7', '#ec4899', '#22c55e', '#eab308'];
+            for (let i = 0; i < 100; i++) {
+                confetti.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height - canvas.height,
+                    r: Math.random() * 6 + 4,
+                    d: Math.random() * canvas.height,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    tilt: Math.random() * 10 - 5,
+                    tiltAngleIncremental: Math.random() * 0.07 + 0.02,
+                    tiltAngle: 0
+                });
+            }
+        }
+
+        function drawConfetti() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            let active = false;
+
+            confetti.forEach((p, index) => {
+                p.tiltAngle += p.tiltAngleIncremental;
+                p.y += (Math.cos(p.d) + 3 + p.r / 2) / 2;
+                p.x += Math.sin(p.tiltAngle);
+                p.tilt = Math.sin(p.tiltAngle - index / 3) * 15;
+
+                if (p.y < canvas.height) {
+                    active = true;
+                }
+
+                ctx.beginPath();
+                ctx.lineWidth = p.r;
+                ctx.strokeStyle = p.color;
+                ctx.moveTo(p.x + p.tilt + p.r / 2, p.y);
+                ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r / 2);
+                ctx.stroke();
+            });
+
+            if (active) {
+                requestAnimationFrame(drawConfetti);
+            } else {
+                confetti = [];
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+        }
+
+        // STATISTIK PRIBADI DARI LOCALSTORAGE
+        function loadPersonalStats() {
+            const stats = JSON.parse(localStorage.getItem('trg_personal_stats')) || {
+                pbNormal: null,
+                pbBlind: null,
+                totalGames: 0,
+                sumDeviation: 0
+            };
+
+            document.getElementById('stat-pb-normal').textContent = stats.pbNormal !== null ? stats.pbNormal.toFixed(3) + "s" : "---";
+            document.getElementById('stat-pb-blind').textContent = stats.pbBlind !== null ? stats.pbBlind.toFixed(3) + "s" : "---";
+            document.getElementById('stat-total-games').textContent = stats.totalGames;
+            
+            if (stats.totalGames > 0) {
+                const avg = stats.sumDeviation / stats.totalGames;
+                document.getElementById('stat-avg-deviation').textContent = avg.toFixed(3) + "s";
+            } else {
+                document.getElementById('stat-avg-deviation').textContent = "---";
+            }
+        }
+
+        function savePersonalStats(deviation, isBlind) {
+            const stats = JSON.parse(localStorage.getItem('trg_personal_stats')) || {
+                pbNormal: null,
+                pbBlind: null,
+                totalGames: 0,
+                sumDeviation: 0
+            };
+
+            stats.totalGames += 1;
+            stats.sumDeviation += deviation;
+
+            if (isBlind) {
+                if (stats.pbBlind === null || deviation < stats.pbBlind) {
+                    stats.pbBlind = deviation;
+                    showToast("Rekor Terbaik Baru di Mode Buta! 🥳", "🏆");
+                }
+            } else {
+                if (stats.pbNormal === null || deviation < stats.pbNormal) {
+                    stats.pbNormal = deviation;
+                    showToast("Rekor Terbaik Baru Tercipta! 🥳", "🏆");
+                }
+            }
+
+            localStorage.setItem('trg_personal_stats', JSON.stringify(stats));
+            loadPersonalStats();
+        }
+
+        // Firebase Auth Init (Sesuai Aturan Mandatori 3)
+        const initAuth = async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Auth error:", error);
+                showToast("❌ Gagal terhubung ke sistem keamanan.", "🔴");
+            }
+        };
+
+        // Tunggu Auth State Berubah
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                // Ambil username yang tersimpan di localStorage sebagai fallback awal
+                const savedName = localStorage.getItem('trg_username');
+                if (savedName) {
+                    username = savedName;
+                    document.getElementById('player-display-name').textContent = username;
+                } else {
+                    // Tampilkan modal pengaturan nama jika belum ada
+                    document.getElementById('username-popup').classList.remove('hidden');
+                    document.getElementById('username-popup').classList.add('flex');
+                }
+                
+                // Ambil statistik pribadi lokal
+                loadPersonalStats();
+                
+                // Mulai Mendengarkan Leaderboard Secara Real-time
+                listenToLeaderboard();
+            }
+        });
+
+        // Simpan Username baru
+        window.saveUsername = function() {
+            const input = document.getElementById('username-input').value.trim();
+            if (input.length < 3) {
+                showToast("Nama minimal harus berisi 3 karakter!", "⚠️");
+                return;
+            }
+            username = input;
+            localStorage.setItem('trg_username', username);
+            document.getElementById('player-display-name').textContent = username;
+            
+            const popup = document.getElementById('username-popup');
+            popup.classList.add('hidden');
+            popup.classList.remove('flex');
+            
+            initAudio();
+            playClickSound();
+            showToast(`Selamat datang, ${username}! Siap menguji refleksmu?`, "👋");
+        };
+
+        // Ganti Nama secara manual
+        window.changeUsernamePrompt = function() {
+            document.getElementById('username-input').value = username;
+            const popup = document.getElementById('username-popup');
+            popup.classList.remove('hidden');
+            popup.classList.add('flex');
+        };
+
+        // INISIALISASI GAMEPLAY
+        function initNewGame() {
+            // Generate target waktu acak antara 5.000 hingga 10.000 detik dengan 3 desimal
+            targetTime = parseFloat((Math.random() * (10.000 - 5.000) + 5.000).toFixed(3));
+            document.getElementById('target-time-display').textContent = targetTime.toFixed(3);
+            
+            // Setel ulang counter display
+            document.getElementById('counter-time').textContent = "0.000";
+            document.getElementById('counter-time').className = "text-6xl sm:text-7xl font-black font-mono text-slate-300 tracking-wider";
+            document.getElementById('counter-box').className = "bg-slate-950 border border-slate-800 rounded-2xl px-10 py-8 min-w-[280px] sm:min-w-[340px] text-center transition-all duration-300";
+            document.getElementById('blind-warning').classList.add('hidden');
+            
+            const actionBtn = document.getElementById('action-btn');
+            actionBtn.textContent = "Mulai Game";
+            actionBtn.className = "w-full sm:w-2/3 py-5 px-8 rounded-2xl font-extrabold text-xl tracking-wide uppercase transition-all duration-300 active:scale-95 transform glow-primary bg-indigo-600 hover:bg-indigo-500 text-white";
+            
+            gameState = "IDLE";
+        }
+
+        // TUGAS TOMBOL UTAMA (MULAI / BERHENTIKAN)
+        window.handleGameAction = function() {
+            initAudio();
+            if (gameState === "IDLE" || gameState === "STOPPED") {
+                // MULAI GAME
+                playClickSound();
+                initNewGame();
+                gameState = "RUNNING";
+                startTime = Date.now();
+                
+                const actionBtn = document.getElementById('action-btn');
+                actionBtn.textContent = "HENTIKAN SEKARANG!";
+                actionBtn.className = "w-full sm:w-2/3 py-5 px-8 rounded-2xl font-extrabold text-xl tracking-wide uppercase transition-all duration-300 active:scale-95 transform glow-red bg-rose-600 hover:bg-rose-500 text-white animate-pulse";
+                
+                document.getElementById('result-panel').classList.add('hidden');
+
+                // Interval per 10 Milidetik
+                tInterval = setInterval(updateTimerDisplay, 10);
+            } else if (gameState === "RUNNING") {
+                // BERHENTIKAN GAME
+                clearInterval(tInterval);
+                gameState = "STOPPED";
+                
+                const finalTime = updatedTime;
+                // Hitung selisih deviasi absolut
+                const deviation = Math.abs(finalTime - targetTime);
+                // Hitung akurasi persentase
+                const accuracy = Math.max(0, (100 - (deviation / targetTime) * 100)).toFixed(2);
+                
+                lastResult = {
+                    target: targetTime,
+                    actual: finalTime,
+                    deviation: deviation,
+                    accuracy: accuracy,
+                    isBlind: isBlindMode
+                };
+
+                // Tampilkan hasil & Simpan Statistik Lokal
+                savePersonalStats(deviation, isBlindMode);
+                displayGameResults();
+            }
+        };
+
+        // UPDATE TIMER DISPLAY (REAL-TIME)
+        let lastLoggedSecond = 0;
+        function updateTimerDisplay() {
+            const timePassed = Date.now() - startTime;
+            updatedTime = parseFloat((timePassed / 1000).toFixed(3));
+            
+            const counterDisplay = document.getElementById('counter-time');
+            
+            // Bunyi detak per detik sebagai penanda refleks auditori
+            const currentSecond = Math.floor(updatedTime);
+            if (currentSecond > lastLoggedSecond) {
+                playTickSound();
+                lastLoggedSecond = currentSecond;
+            }
+
+            // JIKA BLIND MODE AKTIF: Sembunyikan angka setelah 2.0 detik
+            if (isBlindMode && updatedTime >= 2.000) {
+                counterDisplay.textContent = "???";
+                counterDisplay.className = "text-6xl sm:text-7xl font-black font-mono text-amber-500 tracking-wider";
+                document.getElementById('blind-warning').classList.remove('hidden');
+            } else {
+                counterDisplay.textContent = updatedTime.toFixed(3);
+            }
+        }
+
+        // TAMPILKAN PANEL HASIL
+        function displayGameResults() {
+            const devText = lastResult.deviation.toFixed(3) + "s";
+            document.getElementById('res-deviation').textContent = devText;
+            document.getElementById('res-actual').textContent = lastResult.actual.toFixed(3) + "s";
+            document.getElementById('res-accuracy').textContent = lastResult.accuracy + "%";
+            
+            // Perbarui warna box berdasarkan seberapa dekat dengan target
+            const counterBox = document.getElementById('counter-box');
+            const counterText = document.getElementById('counter-time');
+            counterText.textContent = lastResult.actual.toFixed(3); // Selalu tunjukkan hasil asli saat stop
+            
+            if (lastResult.deviation <= 0.05) {
+                // Kategori Dewa Refleks (Deviasi <= 50ms)
+                playSuccessSound();
+                counterBox.className = "bg-emerald-950/40 border border-emerald-500 rounded-2xl px-10 py-8 min-w-[280px] sm:min-w-[340px] text-center glow-green transition-all duration-300";
+                counterText.className = "text-6xl sm:text-7xl font-black font-mono text-emerald-400 tracking-wider animate-bounce";
+                
+                // PICU EFEK LEDAKAN KONFETI
+                createConfetti();
+                drawConfetti();
+                
+                showToast("Luar biasa! Refleks dewa terdeteksi! 🔥", "⚡");
+            } else if (lastResult.deviation <= 0.2) {
+                // Kategori Sangat Bagus (Deviasi <= 200ms)
+                playSuccessSound();
+                counterBox.className = "bg-indigo-950/40 border border-indigo-500 rounded-2xl px-10 py-8 min-w-[280px] sm:min-w-[340px] text-center glow-primary transition-all duration-300";
+                counterText.className = "text-6xl sm:text-7xl font-black font-mono text-indigo-400 tracking-wider";
+            } else {
+                // Kategori Kurang Presisi (Deviasi > 200ms)
+                playFailureSound();
+                counterBox.className = "bg-rose-950/40 border border-rose-500 rounded-2xl px-10 py-8 min-w-[280px] sm:min-w-[340px] text-center glow-red transition-all duration-300";
+                counterText.className = "text-6xl sm:text-7xl font-black font-mono text-rose-400 tracking-wider";
+            }
+
+            // Tampilkan panel aksi lanjutan
+            document.getElementById('result-panel').classList.remove('hidden');
+            
+            const actionBtn = document.getElementById('action-btn');
+            actionBtn.textContent = "Main Lagi";
+            actionBtn.className = "w-full sm:w-2/3 py-5 px-8 rounded-2xl font-extrabold text-xl tracking-wide uppercase transition-all duration-300 active:scale-95 transform glow-primary bg-indigo-600 hover:bg-indigo-500 text-white";
+        }
+
+        // TOGGLE BLIND MODE
+        window.toggleBlindMode = function() {
+            if (gameState === "RUNNING") return; // Jangan izinkan ubah mode saat game sedang berjalan
+            
+            initAudio();
+            playClickSound();
+            isBlindMode = !isBlindMode;
+            const dot = document.getElementById('blind-mode-dot');
+            const btn = document.getElementById('blind-mode-btn');
+            
+            if (isBlindMode) {
+                dot.className = "inline-block h-4 w-4 transform rounded-full bg-indigo-400 transition-transform duration-200 translate-x-6";
+                btn.className = "relative inline-flex h-6 w-11 items-center rounded-full bg-indigo-950 border border-indigo-800 transition-colors duration-200 focus:outline-none";
+                showToast("Mode Buta diaktifkan! Skor Anda akan bernilai ganda.", "🙈");
+            } else {
+                dot.className = "inline-block h-4 w-4 transform rounded-full bg-slate-400 transition-transform duration-200 translate-x-1";
+                btn.className = "relative inline-flex h-6 w-11 items-center rounded-full bg-slate-800 transition-colors duration-200 focus:outline-none";
+            }
+            initNewGame();
+        };
+
+        // SEND SCORE TO FIRESTORE (Sesuai Aturan Mandatori 1, 2, 3)
+        window.submitScoreToLeaderboard = async function() {
+            if (!currentUser) {
+                showToast("Maaf, Anda belum terautentikasi.", "❌");
+                return;
+            }
+            if (!lastResult) return;
+
+            const submitBtn = document.getElementById('submit-score-btn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Mengirim Skor...";
+
+            try {
+                // Gunakan Path Spesifik yang Diwajibkan (RULE 1)
+                const scoreCollection = collection(db, 'artifacts', appId, 'public', 'data', 'leaderboard');
+                
+                await addDoc(scoreCollection, {
+                    username: username,
+                    userId: currentUser.uid,
+                    targetTime: lastResult.target,
+                    actualTime: lastResult.actual,
+                    deviation: parseFloat(lastResult.deviation.toFixed(3)),
+                    accuracy: parseFloat(lastResult.accuracy),
+                    isBlind: lastResult.isBlind,
+                    timestamp: Date.now()
+                });
+
+                showToast("Skor berhasil masuk klasemen global! 🏆", "🎉");
+                submitBtn.textContent = "Skor Terkirim! ✅";
+            } catch (error) {
+                console.error("Gagal mengirim skor:", error);
+                showToast("Ada masalah saat mengirim skor.", "❌");
+                submitBtn.disabled = false;
+                submitBtn.textContent = "Kirim ke Leaderboard Global 🌐";
+            }
+        };
+
+        // LISTEN TO LEADERBOARD REAL-TIME (Sesuai RULE 2 - Tanpa query kompleks orderBy)
+        function listenToLeaderboard() {
+            if (!currentUser) return;
+
+            const scoreCollection = collection(db, 'artifacts', appId, 'public', 'data', 'leaderboard');
+            
+            // onSnapshot wajib menyertakan error callback untuk keamanan
+            onSnapshot(scoreCollection, (snapshot) => {
+                const rawScores = [];
+                snapshot.forEach((doc) => {
+                    rawScores.push(doc.data());
+                });
+
+                // Lakukan pengurutan & penyaringan di memori JavaScript (Sesuai RULE 2)
+                rawScores.sort((a, b) => {
+                    if (a.deviation !== b.deviation) {
+                        return a.deviation - b.deviation;
+                    }
+                    return (b.isBlind ? 1 : 0) - (a.isBlind ? 1 : 0);
+                });
+
+                const topScores = rawScores.slice(0, 50);
+                renderLeaderboard(topScores);
+            }, (error) => {
+                console.error("Leaderboard Real-time Listener Error:", error);
+            });
+        }
+
+        // RENDER LEADERBOARD UI
+        function renderLeaderboard(scores) {
+            const loadingEl = document.getElementById('leaderboard-loading');
+            const emptyEl = document.getElementById('leaderboard-empty');
+            const listEl = document.getElementById('leaderboard-list');
+
+            loadingEl.classList.add('hidden');
+
+            if (scores.length === 0) {
+                emptyEl.classList.remove('hidden');
+                listEl.classList.add('hidden');
+                return;
+            }
+
+            emptyEl.classList.add('hidden');
+            listEl.classList.remove('hidden');
+            listEl.innerHTML = '';
+
+            scores.forEach((item, index) => {
+                const isSelf = currentUser && item.userId === currentUser.uid;
+                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}`;
+                
+                const rowClass = isSelf 
+                    ? 'bg-indigo-950/60 border border-indigo-500/50' 
+                    : 'bg-slate-950/60 border border-slate-900 hover:border-slate-800';
+
+                const badgeMedalClass = index < 3 
+                    ? 'text-lg font-bold w-8 text-center' 
+                    : 'text-xs text-slate-500 font-mono w-8 text-center';
+
+                const blindBadge = item.isBlind 
+                    ? `<span class="ml-1.5 text-[9px] bg-amber-950 text-amber-400 font-bold border border-amber-900 px-1 rounded">BUTA</span>` 
+                    : '';
+
+                listEl.innerHTML += `
+                    <div class="flex items-center justify-between p-3 rounded-xl ${rowClass} transition-all duration-150">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <span class="${badgeMedalClass}">${medal}</span>
+                            <div class="truncate">
+                                <p class="text-sm font-bold text-slate-100 flex items-center">
+                                    <span class="truncate">${item.username}</span>
+                                    ${blindBadge}
+                                    ${isSelf ? '<span class="ml-2 text-[9px] bg-indigo-600 text-white font-extrabold px-1 rounded">KAMU</span>' : ''}
+                                </p>
+                                <p class="text-[10px] text-slate-500">Target: ${item.targetTime.toFixed(3)}s | Stop: ${item.actualTime.toFixed(3)}s</p>
+                            </div>
+                        </div>
+                        <div class="text-right flex-shrink-0">
+                            <p class="text-sm font-black font-mono text-emerald-400">&plusmn;${item.deviation.toFixed(3)}s</p>
+                            <p class="text-[10px] text-slate-400 font-semibold">${item.accuracy.toFixed(1)}% Akurasi</p>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // REWARDED AD REVENUE SIMULATION & BONUS MECHANIC
+        let adCountdown = 5;
+        let adInterval = null;
+
+        window.triggerRewardedAd = function() {
+            if (!lastResult) {
+                showToast("Selesaikan permainan terlebih dahulu!", "⚠️");
+                return;
+            }
+
+            const popup = document.getElementById('rewarded-ad-popup');
+            popup.classList.remove('hidden');
+            popup.classList.add('flex');
+            
+            adCountdown = 5;
+            document.getElementById('ad-timer').textContent = adCountdown;
+
+            adInterval = setInterval(() => {
+                adCountdown--;
+                document.getElementById('ad-timer').textContent = adCountdown;
+                
+                // Tambahkan efek detak kecil selama iklan menonton
+                playTickSound();
+
+                if (adCountdown <= 0) {
+                    clearInterval(adInterval);
+                    popup.classList.add('hidden');
+                    popup.classList.remove('flex');
+                    
+                    // Berikan Reward: Kurangi deviasi hasil terakhir sebanyak 0.050 detik
+                    const oldDev = lastResult.deviation;
+                    lastResult.deviation = Math.max(0, lastResult.deviation - 0.05);
+                    lastResult.accuracy = parseFloat(Math.min(100, Math.max(0, (100 - (lastResult.deviation / lastResult.target) * 100))).toFixed(2));
+                    
+                    displayGameResults();
+                    playSuccessSound();
+                    showToast("🎉 Hebat! Deviasi dipangkas 0.05s berkat sponsor!", "🎁");
+                }
+            }, 1000);
+        };
+
+        // SIMULASI KLIK IKLAN SPONSOR
+        window.showMockAdPopup = function(sponsorName) {
+            initAudio();
+            playClickSound();
+            document.getElementById('ad-sponsor-name').textContent = sponsorName;
+            const popup = document.getElementById('ad-popup');
+            popup.classList.remove('hidden');
+            popup.classList.add('flex');
+        };
+
+        window.closeAdPopup = function() {
+            const popup = document.getElementById('ad-popup');
+            popup.classList.add('hidden');
+            popup.classList.remove('flex');
+        };
+
+        // CUSTOM TOAST NOTIFICATION HELPERS
+        window.showToast = function(msg, icon = "✨") {
+            const toast = document.getElementById('toast-notif');
+            document.getElementById('toast-message').textContent = msg;
+            document.getElementById('toast-icon').textContent = icon;
+            
+            toast.className = "fixed bottom-6 right-6 bg-slate-900 border border-slate-800 px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 transform translate-y-0 opacity-100 transition-all duration-300 z-50";
+            
+            setTimeout(() => {
+                toast.className = "fixed bottom-6 right-6 bg-slate-900 border border-slate-800 px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none z-50";
+            }, 3500);
+        };
+
+        // Mulai proses autentikasi sesegera mungkin
+        initAuth();
+        
+        // Mulai permainan pertama kali
+        initNewGame();
+    </script>
+</body>
+</html>
